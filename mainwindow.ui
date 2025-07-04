@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1075</width>
+    <height>619</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLineEdit" name="fileMaskInput">
+      <property name="placeholderText">
+       <string>Enter file mask (e.g., .txt, testFile.bin)</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="1" column="0" alignment="Qt::AlignTop">
+       <widget class="QPushButton" name="selectInputDirectoryBtn">
+        <property name="text">
+         <string>Select target input directory</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0" alignment="Qt::AlignTop">
+       <widget class="QLineEdit" name="lineEdit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>220</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="cursor">
+         <cursorShape>ArrowCursor</cursorShape>
+        </property>
+        <property name="mouseTracking">
+         <bool>false</bool>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="contextMenuPolicy">
+         <enum>Qt::NoContextMenu</enum>
+        </property>
+        <property name="acceptDrops">
+         <bool>false</bool>
+        </property>
+        <property name="placeholderText">
+         <string>Enter an 8-byte hex (e.g., 01 2A FF 00...)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1" alignment="Qt::AlignTop">
+       <widget class="QLineEdit" name="selectedOutputDirectory">
+        <property name="placeholderText">
+         <string>Selected directory:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1" alignment="Qt::AlignTop">
+       <widget class="QLineEdit" name="valueMaskInput"/>
+      </item>
+      <item row="1" column="1" alignment="Qt::AlignTop">
+       <widget class="QLineEdit" name="selectedInputDirectory">
+        <property name="placeholderText">
+         <string>Selected directory:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0" alignment="Qt::AlignTop">
+       <widget class="QPushButton" name="selectOutputDirectoryBtn">
+        <property name="text">
+         <string>Select target output directory</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QPushButton" name="oneTimeConversionBtn">
+          <property name="text">
+           <string>Start one time conversion</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="periodicalConversionBtn">
+          <property name="text">
+           <string>Start periodical conversion</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="stopConversionBtn">
+          <property name="text">
+           <string>Stop conversion</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QCheckBox" name="checkBox">
+          <property name="text">
+           <string>Should overwrite name conflicts</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="shouldDeleteSourceFiles">
+          <property name="text">
+           <string>Should delete source files</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="conversionProgress">
+      <property name="value">
+       <number>24</number>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1075</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
