@@ -24,7 +24,7 @@
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="1" column="0" alignment="Qt::AlignTop">
+      <item row="2" column="0" alignment="Qt::AlignTop">
        <widget class="QPushButton" name="selectInputDirectoryBtn">
         <property name="text">
          <string>Select target input directory</string>
@@ -65,27 +65,53 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="1" alignment="Qt::AlignTop">
+      <item row="0" column="1" alignment="Qt::AlignTop">
+       <widget class="QLineEdit" name="valueMaskInput"/>
+      </item>
+      <item row="5" column="1" alignment="Qt::AlignTop">
        <widget class="QLineEdit" name="selectedOutputDirectory">
         <property name="placeholderText">
          <string>Selected directory:</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1" alignment="Qt::AlignTop">
-       <widget class="QLineEdit" name="valueMaskInput"/>
+      <item row="5" column="0" alignment="Qt::AlignTop">
+       <widget class="QPushButton" name="selectOutputDirectoryBtn">
+        <property name="text">
+         <string>Select target output directory</string>
+        </property>
+       </widget>
       </item>
-      <item row="1" column="1" alignment="Qt::AlignTop">
+      <item row="2" column="1" alignment="Qt::AlignTop">
        <widget class="QLineEdit" name="selectedInputDirectory">
         <property name="placeholderText">
          <string>Selected directory:</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="0" alignment="Qt::AlignTop">
-       <widget class="QPushButton" name="selectOutputDirectoryBtn">
-        <property name="text">
-         <string>Select target output directory</string>
+      <item row="1" column="1" alignment="Qt::AlignTop">
+       <widget class="QSpinBox" name="timeInterval">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>1000000000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" alignment="Qt::AlignLeft|Qt::AlignTop">
+       <widget class="QLineEdit" name="lineEdit_2">
+        <property name="minimumSize">
+         <size>
+          <width>220</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="placeholderText">
+         <string>Select time interval in seconds</string>
         </property>
        </widget>
       </item>
@@ -121,7 +147,7 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <widget class="QCheckBox" name="checkBox">
+         <widget class="QCheckBox" name="shouldOverwriteConflicts">
           <property name="text">
            <string>Should overwrite name conflicts</string>
           </property>
@@ -141,7 +167,7 @@
     <item>
      <widget class="QProgressBar" name="conversionProgress">
       <property name="value">
-       <number>24</number>
+       <number>0</number>
       </property>
      </widget>
     </item>

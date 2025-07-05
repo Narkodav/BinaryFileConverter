@@ -9,13 +9,58 @@
 #include <QFile>
 #include <QString>
 #include <QFileDevice>
+#include <QTimer>
+#include <QEventLoop>
+#include <QMetaObject>
+#include <QAtomicInteger>
 
 class FileConverter : public QObject
 {
     Q_OBJECT
 
 public:
-    FileConverter();
+    FileConverter() {
+        connect(this, &FileConverter::requestInterrupt, this, &FileConverter::interruptRequested, Qt::DirectConnection);
+        connect(this, &FileConverter::convertSingleTime, this, [this](const QString &inputDir,
+                                                                      const QString &outputDir,
+                                                                      const QString &fileMask,
+                                                                      const QString &byteMask,
+                                                                      bool deleteInputAfterConversion,
+                                                                      bool overwriteExistingFiles,
+                                                                      bool recursiveSearch) {
+            this->resetInterruptFlag();
+            QMetaObject::invokeMethod(this, "convert",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QString, inputDir),
+                                      Q_ARG(QString, outputDir),
+                                      Q_ARG(QString, fileMask),
+                                      Q_ARG(QString, byteMask),
+                                      Q_ARG(bool, deleteInputAfterConversion),
+                                      Q_ARG(bool, overwriteExistingFiles),
+                                      Q_ARG(bool, recursiveSearch));
+        });
+
+        connect(this, &FileConverter::convertPeriodical, this, [this](const QString &inputDir,
+                                                                      const QString &outputDir,
+                                                                      const QString &fileMask,
+                                                                      const QString &byteMask,
+                                                                      bool deleteInputAfterConversion,
+                                                                      bool overwriteExistingFiles,
+                                                                      bool recursiveSearch,
+                                                                      int intervalSeconds) {
+            this->resetInterruptFlag();
+            QMetaObject::invokeMethod(this, "convertContinuously",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QString, inputDir),
+                                      Q_ARG(QString, outputDir),
+                                      Q_ARG(QString, fileMask),
+                                      Q_ARG(QString, byteMask),
+                                      Q_ARG(bool, deleteInputAfterConversion),
+                                      Q_ARG(bool, overwriteExistingFiles),
+                                      Q_ARG(bool, recursiveSearch),
+                                      Q_ARG(int, intervalSeconds));
+        });
+    };
 
 private:
     void convertFile(
@@ -70,6 +115,27 @@ private:
             }
         }
 
+        //handling the reamining bytes
+        if (input.atEnd() && input.status() == QDataStream::ReadPastEnd) {
+            input.resetStatus();
+
+            qint64 pos = input.device()->pos();
+            qint64 size = input.device()->size();
+            int remainingBytes = size - pos;
+
+            if (remainingBytes > 0) {
+                char buffer[8] = {0};
+                qint64 bytesRead = input.device()->read(buffer, remainingBytes);
+
+                if (bytesRead == remainingBytes) {
+                    for (int i = 0; i < remainingBytes; ++i) {
+                        buffer[i] ^= (mask >> (i * 8)) & 0xFF;
+                    }
+                    output.writeRawData(buffer, remainingBytes);
+                }
+            }
+        }
+
         inputFile.close();
         outputFile.close();
     }
@@ -115,26 +181,62 @@ private:
         return mask;
     }
 
-public slots:
-    void convert(
-        const QString &inputDir,          // Input directory path
-        const QString &outputDir,         // Output directory path
-        const QString &fileMask,          // File filter (e.g., "*.txt" or "testFile.bin")
-        const QString &byteMask,          // 8-byte hex mask (e.g., "AF BF FF AF F1 F2 1F FF")
-        bool deleteInputAfterConversion,  // Whether to delete source files
-        bool overwriteExistingFiles,      // Whether to overwrite or auto-rename
-        bool recursiveSearch              // Whether to search subdirectories
-        ) {
+    inline bool conversionLoop(
+        const QString &inputDir,
+        const QString &outputDir,
+        const QString &byteMask,
+        const QStringList& files,
+        bool deleteInputAfterConversion,
+        bool overwriteExistingFiles,
+        uint64_t mask)
+    {
+        emit progressChanged(0, 0, "Starting conversion");
+        const int totalFiles = files.size();
+        int convertedFiles = 0;
+        foreach(const QString &file, files) {
+            if(m_interrupted.loadAcquire()) {
+                return false;
+            }
 
-        // Validate parameters
+            emit progressChanged(
+                convertedFiles,
+                totalFiles,
+                QString("Converting: %1").arg(file)
+                );
+
+            convertFile(
+                inputDir + "/" + file,
+                outputDir,
+                mask,
+                overwriteExistingFiles
+                );
+
+            if(deleteInputAfterConversion) {
+                QFile::remove(inputDir + "/" + file);
+            }
+
+            convertedFiles++;
+        }
+        return true;
+    }
+
+public slots:
+    void convert(const QString &inputDir,
+                 const QString &outputDir,
+                 const QString &fileMask,
+                 const QString &byteMask,
+                 bool deleteInputAfterConversion,
+                 bool overwriteExistingFiles,
+                 bool recursiveSearch) {
+
         if(inputDir.isEmpty() || outputDir.isEmpty()) {
             emit errorOccurred("Input and output directories must be specified");
             emit finishedConversion(false);
             return;
         }
 
-        // Process files
         try {
+            emit progressChanged(0, 0, "Starting conversion");
             uint64_t mask = createMask(byteMask);
             QDir inputDirectory(inputDir);
             QStringList filters = fileMask.split(' ', Qt::SkipEmptyParts);
@@ -145,38 +247,70 @@ public slots:
                 QDir::Files | (recursiveSearch ? QDir::NoDotAndDotDot | QDir::AllEntries : QDir::NoDotAndDotDot)
                 );
 
-            const int totalFiles = files.size();
-            int convertedFiles = 0;
+            if(files.size() == 0)
+                emit finishedConversion(true);
 
-            foreach(const QString &file, files) {
-                if(QThread::currentThread()->isInterruptionRequested()) {
-                    emit progressChanged(0, 0, "Conversion cancelled");
-                    emit finishedConversion(false);
-                    return;
-                }
-
-                emit progressChanged(
-                    convertedFiles,
-                    totalFiles,
-                    QString("Converting: ").arg(file)
-                    );
-
-                convertFile(
-                    inputDir + "/" + file,
-                    outputDir,
-                    mask,
-                    overwriteExistingFiles
-                    );
-
-                // Delete source file if requested
-                if(deleteInputAfterConversion) {
-                    QFile::remove(inputDir + "/" + file);
-                }
-
-                // Update progress
-                convertedFiles++;
+            if(!conversionLoop(inputDir,outputDir,byteMask,files,
+                                deleteInputAfterConversion,overwriteExistingFiles,mask))
+            {
+                emit progressChanged(0, 0, "Conversion cancelled");
+                emit finishedConversion(false);
             }
 
+            emit progressChanged(0, 0, "Conversion finished");
+            emit finishedConversion(true);
+        }
+        catch(const std::exception &e) {
+            emit errorOccurred(QString("Conversion failed: %1") + e.what());
+            emit finishedConversion(false);
+        }
+    }
+
+    void convertContinuously(const QString &inputDir,
+                             const QString &outputDir,
+                             const QString &fileMask,
+                             const QString &byteMask,
+                             bool deleteInputAfterConversion,
+                             bool overwriteExistingFiles,
+                             bool recursiveSearch,
+                             int intervalSeconds) {
+
+        if(inputDir.isEmpty() || outputDir.isEmpty()) {
+            emit errorOccurred("Input and output directories must be specified");
+            emit finishedConversion(false);
+            return;
+        }
+
+        try {
+            QEventLoop waitLoop;
+            QTimer waitTimer;
+            waitTimer.setSingleShot(true);
+
+            connect(this, &FileConverter::requestInterrupt, &waitLoop, &QEventLoop::quit, Qt::DirectConnection);
+            connect(&waitTimer, &QTimer::timeout, &waitLoop, &QEventLoop::quit);
+
+            uint64_t mask = createMask(byteMask);
+            QDir inputDirectory(inputDir);
+            QStringList filters = fileMask.split(' ', Qt::SkipEmptyParts);
+
+            while(!m_interrupted.loadAcquire()) {
+                QStringList files = inputDirectory.entryList(
+                    filters,
+                    QDir::Files | (recursiveSearch ? QDir::NoDotAndDotDot | QDir::AllEntries : QDir::NoDotAndDotDot)
+                    );
+
+                if(!files.isEmpty() &&
+                    !conversionLoop(inputDir,outputDir,byteMask,files,
+                        deleteInputAfterConversion,overwriteExistingFiles,mask))
+                    break;
+
+                emit progressChanged(0, 0,
+                                     QStringLiteral("Waiting %1 seconds").arg(intervalSeconds));
+                waitTimer.start(intervalSeconds * 1000);
+                waitLoop.exec();
+            }
+
+            emit progressChanged(0, 0, "Conversion cancelled");
             emit finishedConversion(true);
         }
         catch(const std::exception &e) {
@@ -185,10 +319,34 @@ public slots:
         }
     }
 
+    void interruptRequested() { m_interrupted = true; };
+    void resetInterruptFlag() { m_interrupted = false; };
+
 signals:
     void progressChanged(int current, int total, const QString &message);
     void errorOccurred(const QString &errorMessage);
     void finishedConversion(bool success);
+    void requestInterrupt();
+
+    void convertSingleTime(const QString &inputDir,
+                           const QString &outputDir,
+                           const QString &fileMask,
+                           const QString &byteMask,
+                           bool deleteInputAfterConversion,
+                           bool overwriteExistingFiles,
+                           bool recursiveSearch);
+
+    void convertPeriodical(const QString &inputDir,
+                           const QString &outputDir,
+                           const QString &fileMask,
+                           const QString &byteMask,
+                           bool deleteInputAfterConversion,
+                           bool overwriteExistingFiles,
+                           bool recursiveSearch,
+                           int intervalSeconds);
+
+private:
+    QAtomicInteger<bool> m_interrupted{false};
 };
 
 #endif // FILECONVERTER_H

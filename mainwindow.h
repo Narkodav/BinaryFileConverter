@@ -2,6 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QFileDialog>
+#include <QMessageBox>
+
 #include "FileConverter.h"
 
 QT_BEGIN_NAMESPACE
@@ -21,6 +24,20 @@ public:
 private slots:
     void on_oneTimeConversionBtn_clicked();
     void finishedConversion(bool success);
+
+    void handleConversionError(const QString &errorMessage);
+
+    void on_stopConversionBtn_clicked();
+
+    void updateProgressBar(int current, int total, const QString &message);
+    void on_selectInputDirectoryBtn_clicked();
+
+    void on_selectOutputDirectoryBtn_clicked();
+
+    void on_periodicalConversionBtn_clicked();
+
+    void disableUi();
+    void enableUi();
 
 private:
     Ui::MainWindow *ui;
