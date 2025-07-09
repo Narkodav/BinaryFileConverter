@@ -102,10 +102,13 @@ private:
         output.setByteOrder(QDataStream::LittleEndian);
 
         uint64_t value;
-        while (!input.atEnd()) {
+        uint64_t fileSize = input.device()->size();
+        uint64_t chunkedPartSize = fileSize / 8;
+        uint64_t remains = fileSize - chunkedPartSize * 8;
+
+        for(size_t i = 0; i < chunkedPartSize; ++i) {
             input >> value;
             if (input.status() != QDataStream::Ok) {
-                if (input.atEnd()) break; //stop at incomplete final chunk
                 throw std::runtime_error("Input stream read error");
             }
 
@@ -115,24 +118,15 @@ private:
             }
         }
 
-        //handling the reamining bytes
-        if (input.atEnd() && input.status() == QDataStream::ReadPastEnd) {
-            input.resetStatus();
+        if (remains > 0) {
+            char buffer[8] = {0};
+            uint64_t bytesRead = input.device()->read(buffer, remains);
 
-            qint64 pos = input.device()->pos();
-            qint64 size = input.device()->size();
-            int remainingBytes = size - pos;
-
-            if (remainingBytes > 0) {
-                char buffer[8] = {0};
-                qint64 bytesRead = input.device()->read(buffer, remainingBytes);
-
-                if (bytesRead == remainingBytes) {
-                    for (int i = 0; i < remainingBytes; ++i) {
-                        buffer[i] ^= (mask >> (i * 8)) & 0xFF;
-                    }
-                    output.writeRawData(buffer, remainingBytes);
+            if (bytesRead == remains) {
+                for (size_t i = 0; i < remains; ++i) {
+                    buffer[i] ^= (mask >> (i * 8)) & 0xFF;
                 }
+                output.writeRawData(buffer, remains);
             }
         }
 
