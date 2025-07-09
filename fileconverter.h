@@ -124,7 +124,7 @@ private:
 
             if (bytesRead == remains) {
                 for (size_t i = 0; i < remains; ++i) {
-                    buffer[i] ^= (mask >> (i * 8)) & 0xFF;
+                    buffer[i] ^= (mask >> (56 - i * 8)) & 0xFF; //little endian
                 }
                 output.writeRawData(buffer, remains);
             }
